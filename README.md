@@ -1,10 +1,10 @@
 # windows-terminal-mcp
 
-An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that lets any LLM execute commands on a Windows terminal — including local shells and remote SSH connections.
+An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that lets any LLM execute commands on a local terminal or over SSH — works on **Windows and macOS**.
 
 ## Features
 
-- Run commands via `cmd`, `powershell`, or `bash` (Git Bash)
+- Run commands via native shells (`cmd`/`powershell`/`bash` on Windows, `zsh`/`bash`/`sh` on macOS)
 - Execute remote commands over **SSH** with key-based authentication
 - 3-level security model (safe / confirm / blocked)
 - Configurable timeout per command
@@ -18,18 +18,20 @@ cd windows-terminal-mcp
 pip install -e .
 ```
 
-> Requires Python 3.11+ on Windows.
+> Requires Python 3.11+. Works on Windows and macOS.
 
 ## Configuration
 
-Add the server to your Claude Desktop config file (`%APPDATA%\Claude\claude_desktop_config.json`):
+### macOS
+
+Add the server to your Claude Desktop config file (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
-    "windows-terminal": {
-      "command": "cmd",
-      "args": ["/c", "python", "-m", "windows_terminal_mcp.server"]
+    "terminal": {
+      "command": "python3",
+      "args": ["-m", "windows_terminal_mcp.server"]
     }
   }
 }
@@ -40,9 +42,24 @@ Or point directly to the script:
 ```json
 {
   "mcpServers": {
-    "windows-terminal": {
+    "terminal": {
+      "command": "python3",
+      "args": ["/path/to/windows-terminal-mcp/src/windows_terminal_mcp/server.py"]
+    }
+  }
+}
+```
+
+### Windows
+
+Add the server to your Claude Desktop config file (`%APPDATA%\Claude\claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "terminal": {
       "command": "cmd",
-      "args": ["/c", "python", "C:/path/to/windows-terminal-mcp/src/windows_terminal_mcp/server.py"]
+      "args": ["/c", "python", "-m", "windows_terminal_mcp.server"]
     }
   }
 }
@@ -55,7 +72,7 @@ Or point directly to the script:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `command` | string | required | Command to run. For SSH: `user@host command` |
-| `shell` | string | `cmd` | Shell: `cmd`, `powershell`, `bash`, `ssh` |
+| `shell` | string | `zsh` / `cmd` | Shell: `zsh`/`bash`/`sh`/`ssh` (macOS) or `cmd`/`powershell`/`bash`/`ssh` (Windows) |
 | `working_dir` | string | — | Working directory (local commands only) |
 | `timeout_ms` | integer | `120000` | Timeout in milliseconds |
 | `ssh_key` | string | — | Path to SSH private key (e.g. `~/.ssh/id_rsa`) |
@@ -73,7 +90,20 @@ Or point directly to the script:
 
 ## Usage Examples
 
-### Local commands
+### Local commands — macOS
+
+```
+Run: ls -la ~/Documents
+Shell: zsh
+
+Run: git status
+Shell: zsh
+
+Run: brew list
+Shell: bash
+```
+
+### Local commands — Windows
 
 ```
 Run: dir C:\Users
@@ -86,7 +116,7 @@ Run: git status
 Shell: bash
 ```
 
-### SSH commands
+### SSH commands (both platforms)
 
 ```
 Run: ubuntu@192.168.1.10 "df -h && uptime"
@@ -106,13 +136,13 @@ Timeout: 30000
 Commands are classified into three levels:
 
 **Safe** — executed directly  
-`echo`, `dir`, `type`, `git`, `npm`, `node`, `python`, `pip`, `curl`, and most read-only commands.
+`echo`, `ls`, `dir`, `git`, `npm`, `node`, `python`, `pip`, `curl`, and most read-only commands.
 
 **Dangerous** — Claude will warn before executing  
-`del`, `rmdir`, `rm`, `taskkill`, `net stop`, `net start`, `sc delete`, `reg add`, etc.
+`rm`, `del`, `rmdir`, `taskkill`, `net stop`, `launchctl`, `diskutil`, `dscl`, `networksetup`, and similar system-modifying commands.
 
 **Blocked** — always rejected  
-`format`, `del /s /q`, `rd /s /q`, `reg delete`, `regedit`, `shutdown`, `net user`, `rm -rf`, `mkfs`, `fdisk`, and similar destructive operations.
+`rm -rf`, `format`, `del /s /q`, `reg delete`, `shutdown`, `diskutil eraseDisk`, `launchctl bootout system`, `mkfs`, `fdisk`, and similar destructive operations.
 
 ## Development
 
@@ -145,10 +175,12 @@ pytest tests/ -v
 ```python
 from windows_terminal_mcp.server import execute_command
 
-result = execute_command("echo hello", shell="cmd")
+# macOS
+result = execute_command("echo hello", shell="zsh")
 print(result)
 # {'stdout': 'hello\n', 'stderr': '', 'exit_code': 0, 'execution_time': 0.02}
 
+# SSH (both platforms)
 result = execute_command(
     "ubuntu@192.168.1.10 uptime",
     shell="ssh",
@@ -159,6 +191,15 @@ print(result)
 ```
 
 ## Changelog
+
+### v0.3.0
+- Added macOS support: `zsh`, `bash`, `sh` shells with auto-detection
+- Shell selection is now platform-aware (Windows vs macOS/Linux)
+- Added macOS-specific security rules (`diskutil`, `launchctl`, `dscl`, `networksetup`, etc.)
+- Fixed logic bug in `check_command_safety` (wrong variable in inner loop)
+- Added `encoding="utf-8"` to subprocess calls for cross-platform consistency
+- Updated tool schema to expose platform-appropriate shells
+- Server now imports security checks from `security.py` (removed duplication)
 
 ### v0.2.0
 - Added SSH support with key-based authentication
