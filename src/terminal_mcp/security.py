@@ -1,9 +1,9 @@
-"""Windows Terminal MCP - Security checks."""
-import re
+"""Terminal MCP - Security checks."""
 from typing import Tuple, Optional
 
 # Commands that are blocked automatically (very dangerous)
 VERY_DANGEROUS = [
+    # Windows destructive
     "format",
     "del /s /q",
     "rd /s /q",
@@ -15,14 +15,21 @@ VERY_DANGEROUS = [
     "net localgroup",
     "Remove-Item -Recurse",
     "Remove-Item -Force",
+    # Unix/Linux/macOS destructive
     "rm -rf",
     "rm -r",
     "mkfs",
     "fdisk",
+    # macOS destructive
+    "diskutil erasedisk",
+    "diskutil erasevolume",
+    "launchctl bootout system",
+    "dscl . -delete /users",
 ]
 
 # Commands that require user confirmation (risky)
 DANGEROUS = [
+    # Windows risky
     "del ",
     "rmdir ",
     "rm ",
@@ -42,31 +49,36 @@ DANGEROUS = [
     "icacls",
     "runas",
     "powershell -Command",
+    # macOS risky
+    "launchctl",
+    "diskutil",
+    "dscl",
+    "networksetup",
+    "systemsetup",
+    "csrutil",
+    "pfctl",
 ]
 
 
 def check_command_safety(command: str) -> Tuple[str, Optional[str]]:
     """
     Check if a command is safe to execute.
-    
+
     Returns:
         (status, confirmation_message)
         - status: "safe", "dangerous", or "blocked"
         - confirmation_message: message if user confirmation needed
     """
     cmd_lower = command.lower().strip()
-    
-    # Check very dangerous commands (block immediately)
+
     for dangerous in VERY_DANGEROUS:
-        if dangerous in cmd_lower:
+        if dangerous.lower() in cmd_lower:
             return "blocked", f"Command blocked: '{dangerous}' is too dangerous"
-    
-    # Check dangerous commands (need user confirmation)
+
     for risky in DANGEROUS:
-        if cmd_lower.startswith(risky) or dangerous in cmd_lower:
-            # Check if it's not in a safe context
+        if cmd_lower.startswith(risky.lower()) or risky.lower() in cmd_lower:
             return "dangerous", f"Command '{command[:50]}...' requires user confirmation"
-    
+
     return "safe", None
 
 

@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "windows-terminal-mcp"
-version = "0.2.0"
-description = "MCP server that lets any LLM execute commands on a Windows terminal, including SSH"
+name = "terminal-mcp"
+version = "0.3.0"
+description = "MCP server that lets any LLM execute terminal commands on Windows and macOS, including SSH"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
@@ -20,6 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
     "Topic :: Software Development :: Libraries",
     "Topic :: System :: Shells",
     "Intended Audience :: Developers",
